@@ -1,42 +1,183 @@
-#root {
-  max-width: 1280px;
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 840px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 3rem 1.5rem 4rem;
+}
+
+header > h1 {
+  margin: 0;
+  font-size: 2.25rem;
+}
+
+header > p {
+  margin-top: 0.5rem;
+  color: #5b6470;
+}
+
+.order-form {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #324055;
+}
+
+.form-field > select,
+.form-field > input {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #d5dbe5;
+  font-size: 1rem;
+  font-weight: 500;
+  background: #f8fafc;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-field > select:focus,
+.form-field > input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  outline: none;
+  background: #ffffff;
+}
+
+.form-field > select:disabled,
+.form-field > input:disabled {
+  cursor: not-allowed;
+  background: #f1f5f9;
+  color: #9aa2b1;
+}
+
+.stock-indicator {
+  margin: 0.75rem 0 0;
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.order-form > button {
+  justify-self: flex-start;
+  border-radius: 999px;
+  padding: 0.65rem 1.75rem;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.order-form > button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+}
+
+.order-form > button:disabled {
+  background: #cbd5f5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.feedback {
+  padding: 0.85rem 1.2rem;
+  border-radius: 12px;
+  font-weight: 500;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.feedback.success {
+  color: #166534;
+  border-left: 4px solid #16a34a;
+}
+
+.feedback.error {
+  color: #b91c1c;
+  border-left: 4px solid #ef4444;
+}
+
+.inventory {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.inventory > h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.inventory-card {
+  padding: 1.25rem 1.5rem;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+}
+
+.inventory-card > h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  color: #1f2937;
+}
+
+.inventory-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.inventory-card li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.inventory-card li strong {
+  font-variant-numeric: tabular-nums;
+  color: #111827;
+}
+
+.status {
+  margin: 4rem auto;
+  max-width: 420px;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.1);
   text-align: center;
+  font-size: 1.1rem;
+  color: #1f2937;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.status.error {
+  color: #b91c1c;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+@media (max-width: 720px) {
+  .app {
+    padding: 2.5rem 1rem 3rem;
   }
-  to {
-    transform: rotate(360deg);
+
+  .order-form {
+    padding: 1.25rem;
   }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
 }
