@@ -18,10 +18,32 @@ const SINGLE_ROW_QUERY = `*[_type=="product" && _id==$productId][0]{
 }`
 
 const DEFAULT_FUNCTION_BASE = 'https://pexpress-netlify.netlify.app'
-const FUNCTION_BASE =
-  (import.meta.env.VITE_FUNCTIONS_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
-  DEFAULT_FUNCTION_BASE
-const UPDATE_STOCK_ENDPOINT = `${FUNCTION_BASE}/.netlify/functions/update-stock`
+
+function resolveUpdateStockEndpoint() {
+  const envValue = (import.meta.env.VITE_FUNCTIONS_BASE_URL as string | undefined)?.trim()
+  if (envValue && envValue.length > 0) {
+    const sanitized = envValue.replace(/\/$/, '')
+    if (sanitized.endsWith('/update-stock')) return sanitized
+    if (sanitized.endsWith('/.netlify/functions')) {
+      return `${sanitized}/update-stock`
+    }
+    if (sanitized.includes('/.netlify/functions/')) {
+      return sanitized
+    }
+    return `${sanitized}/.netlify/functions/update-stock`
+  }
+
+  if (typeof window !== 'undefined') {
+    const origin = window.location?.origin ?? ''
+    if (origin && !origin.includes('localhost')) {
+      return `${origin.replace(/\/$/, '')}/.netlify/functions/update-stock`
+    }
+  }
+
+  return `${DEFAULT_FUNCTION_BASE}/.netlify/functions/update-stock`
+}
+
+const UPDATE_STOCK_ENDPOINT = resolveUpdateStockEndpoint()
 
 export async function submitOrder({productId, rowKey, quantity}: OrderInput) {
   if (quantity <= 0) throw new Error('Informe uma quantidade maior que zero')

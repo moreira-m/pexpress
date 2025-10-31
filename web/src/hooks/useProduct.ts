@@ -8,18 +8,24 @@ export function useProducts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchOnce = useCallback(async ({silent = false}: {silent?: boolean} = {}) => {
-    if (!silent) setLoading(true)
-    try {
-      const res = await sanity.fetch<Product[]>(PRODUCTS_QUERY)
-      setData(res)
-      setError(null)
-    } catch (e: any) {
-      setError(e?.message ?? 'Erro ao carregar')
-    } finally {
-      if (!silent) setLoading(false)
-    }
-  }, [])
+  const fetchOnce = useCallback(
+    async ({silent = false}: {silent?: boolean} = {}) => {
+      if (!silent) setLoading(true)
+      try {
+        const res = await sanity.fetch<Product[]>(PRODUCTS_QUERY)
+        setData(res)
+        setError(null)
+        return {ok: true as const}
+      } catch (e: any) {
+        const message = e?.message ?? 'Erro ao carregar'
+        setError(message)
+        return {ok: false as const, error: message}
+      } finally {
+        if (!silent) setLoading(false)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     fetchOnce()
