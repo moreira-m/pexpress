@@ -17,8 +17,10 @@ const SINGLE_ROW_QUERY = `*[_type=="product" && _id==$productId][0]{
   }
 }`
 
+const DEFAULT_FUNCTION_BASE = 'https://pexpress-netlify.netlify.app'
 const FUNCTION_BASE =
-  (import.meta.env.VITE_FUNCTIONS_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+  (import.meta.env.VITE_FUNCTIONS_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
+  DEFAULT_FUNCTION_BASE
 const UPDATE_STOCK_ENDPOINT = `${FUNCTION_BASE}/.netlify/functions/update-stock`
 
 export async function submitOrder({productId, rowKey, quantity}: OrderInput) {
