@@ -1,4 +1,4 @@
-import {sanity, sanityWrite} from '../sanityClient'
+import {sanity} from '../sanityClient'
 import type {Product, Row} from '../types'
 
 type OrderInput = {
@@ -17,12 +17,11 @@ const SINGLE_ROW_QUERY = `*[_type=="product" && _id==$productId][0]{
   }
 }`
 
-function escapeQuotes(key: string) {
-  return key.replace(/"/g, '\\"')
-}
+const FUNCTION_BASE =
+  (import.meta.env.VITE_FUNCTIONS_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+const UPDATE_STOCK_ENDPOINT = `${FUNCTION_BASE}/.netlify/functions/update-stock`
 
 export async function submitOrder({productId, rowKey, quantity}: OrderInput) {
-  if (!sanityWrite) throw new Error('Token de escrita do Sanity ausente')
   if (quantity <= 0) throw new Error('Informe uma quantidade maior que zero')
 
   type RowDocument = Pick<Row, '_key' | 'flavor'> & {stock?: number | null}
@@ -37,19 +36,41 @@ export async function submitOrder({productId, rowKey, quantity}: OrderInput) {
   if (!product || !row) throw new Error('Produto ou sabor não encontrado')
 
   const current = typeof row.stock === 'number' ? row.stock : 0
+  if (!Number.isFinite(current)) throw new Error('Estoque inválido recebido do servidor')
   if (quantity > current) {
     throw new Error(
       `Estoque insuficiente. Disponível: ${current}, solicitado: ${quantity}`
     )
   }
 
-  const newStock = current - quantity
-  const escaped = escapeQuotes(rowKey)
+  const response = await fetch(UPDATE_STOCK_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      productId,
+      rowKey,
+      quantity,
+    }),
+  })
 
-  await sanityWrite
-    .patch(productId)
-    .set({[`rows[_key=="${escaped}"].stock`]: newStock})
-    .commit({autoGenerateArrayKeys: false})
+  if (!response.ok) {
+    let detail = ''
+    try {
+      const payload = await response.json()
+      detail = payload?.error ?? ''
+    } catch {
+      // ignore JSON parsing failure, keep generic message
+    }
+    const reason = detail || `status ${response.status}`
+    throw new Error(`Falha ao atualizar estoque (${reason}).`)
+  }
 
-  return {newStock}
+  const payload = (await response.json()) as {newStock: number}
+  if (typeof payload?.newStock !== 'number') {
+    throw new Error('Resposta inesperada do servidor')
+  }
+
+  return {newStock: payload.newStock}
 }
