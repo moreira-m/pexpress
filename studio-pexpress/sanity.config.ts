@@ -3,6 +3,7 @@ import {defineConfig} from 'sanity'
 import {presentationTool} from 'sanity/presentation'
 import {structureTool} from 'sanity/structure'
 import {schemaTypes} from './schemaTypes'
+import deckStructure from './deckStructure'
 
 type EnvRecord = Record<string, string | boolean | undefined>
 
@@ -52,7 +53,9 @@ export default defineConfig({
   dataset,
   studioHost,
   plugins: [
-    structureTool(),
+    structureTool({
+      structure: deckStructure,
+    }),
     visionTool(),
     presentationTool({
       previewUrl: {origin: previewOrigin},
