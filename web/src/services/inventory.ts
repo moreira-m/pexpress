@@ -34,9 +34,20 @@ function resolveUpdateStockEndpoint() {
   }
 
   if (typeof window !== 'undefined') {
-    const origin = window.location?.origin ?? ''
-    if (origin && !origin.includes('localhost')) {
-      return `${origin.replace(/\/$/, '')}/.netlify/functions/update-stock`
+    try {
+      const currentUrl = new URL(window.location.href)
+      const origin = currentUrl.origin.replace(/\/$/, '')
+      const host = currentUrl.hostname
+
+      const isLocalhost = host === 'localhost' || host.startsWith('127.')
+      const isNetlifyDomain =
+        host.endsWith('.netlify.app') || host.endsWith('.netlify.com') || host.endsWith('.netlify.dev')
+
+      if (origin && (isLocalhost || isNetlifyDomain)) {
+        return `${origin}/.netlify/functions/update-stock`
+      }
+    } catch {
+      // ignore URL parsing errors and keep the default base
     }
   }
 
