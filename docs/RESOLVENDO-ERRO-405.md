@@ -63,6 +63,7 @@ Configure os seguintes valores:
 | `SANITY_DATASET`            | Netlify Functions     | Dataset Sanity (ex.: `production`). |
 | `SANITY_WRITE_TOKEN`        | Netlify Functions     | Token com permissão de escrita no Sanity. |
 | `CORS_ALLOWED_ORIGIN`       | Netlify Functions     | Origem permitida (use o domínio do app, ex.: `https://pexpress-netlify.netlify.app`). |
+| `VITE_SANITY_USE_CDN`       | Frontend (opcional)   | Defina `false` para evitar cache do CDN e exibir estoque em tempo real (recomendado para este app). |
 
 > Dica: mantenha as variáveis em `.env.local` para desenvolvimento e use os painéis de configuração nos serviços de hospedagem.
 
@@ -136,9 +137,12 @@ VITE_FUNCTIONS_BASE_URL="https://pexpress-netlify.netlify.app" npm run dev
 2. **403/401 Forbidden**  
    - Confirme `SANITY_WRITE_TOKEN` com permissões corretas.  
    - Confira `CORS_ALLOWED_ORIGIN`.
-3. **500 Missing Sanity configuration**  
+3. **Estoque demora a atualizar**  
+   - Garanta que `VITE_SANITY_USE_CDN=false` nos builds em produção para ler direto da API do Sanity.  
+   - Confirme que o dataset permite `listen` ou ajuste o intervalo de `refetch`.
+4. **500 Missing Sanity configuration**  
    - Variáveis `SANITY_PROJECT_ID`, `SANITY_DATASET` e `SANITY_WRITE_TOKEN` devem estar presentes no ambiente das funções.
-4. **Erro ao sincronizar dados**  
+5. **Erro ao sincronizar dados**  
    - Veja a aba “Network”/“Console” para mensagens detalhadas retornadas por `submitOrder`.
 
 ---
