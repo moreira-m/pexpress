@@ -144,6 +144,21 @@ export default function App() {
           ? err.message
           : 'Falha ao registrar o pedido. Tente novamente.'
       setFeedback({status: 'error', message})
+
+      const latestStockFromServer = Number(err?.details?.currentStock)
+      if (Number.isFinite(latestStockFromServer)) {
+        try {
+          await refetch({silent: true})
+          setQuantity((prev) => {
+            const safeStock = Math.max(0, latestStockFromServer)
+            if (safeStock <= 0) return 1
+            return Math.min(prev, safeStock)
+          })
+        } catch (refreshError) {
+          console.error('refetch after error failed', refreshError)
+        }
+      }
+
       console.error('submitOrder error', err)
     } finally {
       setSubmitting(false)

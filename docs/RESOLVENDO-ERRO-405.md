@@ -48,6 +48,17 @@ Agora `refetch` retorna `{ok: boolean, error?: string}`, permitindo tratar sincr
 
 Embora não impacte o erro 405, o redesign facilita identificar o estado de sincronização e monitorar estoque em tempo real.
 
+### 2.4 Consistência em pedidos concorrentes
+
+Arquivo: `netlify/functions/update-stock.js`  
+Aplicamos mutações com `dec` atômico + `ifRevisionID`, com até 3 tentativas. Se outro pedido consumir o estoque primeiro, a função:
+
+- Reconsulta o estoque direto na API (sem CDN);
+- Retorna HTTP 409 com o estoque mais recente;
+- O frontend faz refetch automático e ajusta a quantidade sugerida.
+
+Isso impede que duas pessoas derrubem o estoque incorretamente.
+
 ---
 
 ## 3. Configuração do ambiente

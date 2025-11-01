@@ -90,19 +90,23 @@ export async function submitOrder({productId, rowKey, quantity}: OrderInput) {
     }),
   })
 
+  let payload: any = null
   if (!response.ok) {
     let detail = ''
     try {
-      const payload = await response.json()
+      payload = await response.json()
       detail = payload?.error ?? ''
     } catch {
-      // ignore JSON parsing failure, keep generic message
+      payload = null
     }
     const reason = detail || `status ${response.status}`
-    throw new Error(`Falha ao atualizar estoque (${reason}).`)
+    const error = new Error(`Falha ao atualizar estoque (${reason}).`)
+    ;(error as any).status = response.status
+    ;(error as any).details = payload ?? {}
+    throw error
   }
 
-  const payload = (await response.json()) as {newStock: number}
+  payload = (await response.json()) as {newStock: number}
   if (typeof payload?.newStock !== 'number') {
     throw new Error('Resposta inesperada do servidor')
   }

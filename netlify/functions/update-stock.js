@@ -15,6 +15,7 @@ const BASE_HEADERS = {
 
 const SINGLE_ROW_QUERY = `*[_type=="product" && _id==$productId][0]{
   _id,
+  _rev,
   name,
   'row': rows[_key==$rowKey][0]{
     _key,
@@ -33,6 +34,83 @@ function jsonResponse(statusCode, body) {
     headers: BASE_HEADERS,
     body: JSON.stringify(body),
   }
+}
+
+async function fetchProductRow({productId, rowKey}) {
+  const queryResult = await fetch(
+    `https://${PROJECT_ID}.api.sanity.io/v${API_VERSION}/data/query/${DATASET}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TOKEN}`,
+      },
+      body: JSON.stringify({
+        query: SINGLE_ROW_QUERY,
+        params: {
+          productId,
+          rowKey,
+        },
+      }),
+    },
+  )
+
+  const queryJson = await queryResult.json()
+
+  if (!queryResult.ok) {
+    const reason =
+      queryJson?.error?.description ||
+      queryJson?.error?.message ||
+      queryJson?.message ||
+      'Erro ao consultar produto'
+    const error = new Error(reason)
+    error.statusCode = queryResult.status || 500
+    throw error
+  }
+
+  return queryJson?.result || null
+}
+
+async function mutateStock({productId, rowKey, quantity, revision}) {
+  const escapedKey = escapeQuotes(rowKey)
+  const mutationResult = await fetch(
+    `https://${PROJECT_ID}.api.sanity.io/v${API_VERSION}/data/mutate/${DATASET}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TOKEN}`,
+      },
+      body: JSON.stringify({
+        mutations: [
+          {
+            patch: {
+              id: productId,
+              ifRevisionID: revision,
+              dec: {
+                [`rows[_key=="${escapedKey}"].stock`]: quantity,
+              },
+            },
+          },
+        ],
+      }),
+    },
+  )
+
+  if (mutationResult.ok) {
+    return {ok: true}
+  }
+
+  const mutationJson = await mutationResult.json().catch(() => ({}))
+  const error = new Error(
+    mutationJson?.error?.description ||
+      mutationJson?.error?.message ||
+      mutationJson?.message ||
+      'Erro ao atualizar estoque',
+  )
+  error.statusCode = mutationResult.status || 500
+  error.payload = mutationJson
+  throw error
 }
 
 exports.handler = async function handler(event) {
@@ -71,89 +149,61 @@ exports.handler = async function handler(event) {
   }
 
   try {
-    const queryResult = await fetch(
-      `https://${PROJECT_ID}.apicdn.sanity.io/v${API_VERSION}/data/query/${DATASET}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${TOKEN}`,
-        },
-        body: JSON.stringify({
-          query: SINGLE_ROW_QUERY,
-          params: {
-            productId,
-            rowKey,
-          },
-        }),
-      },
-    )
+    const MAX_ATTEMPTS = 3
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+      const product = await fetchProductRow({productId, rowKey})
+      const row = product?.row || null
 
-    const queryJson = await queryResult.json()
+      if (!product || !row) {
+        return jsonResponse(404, {error: 'Produto ou sabor não encontrado'})
+      }
 
-    if (!queryResult.ok) {
-      const reason =
-        queryJson?.error?.description ||
-        queryJson?.error?.message ||
-        queryJson?.message ||
-        'Erro ao consultar produto'
-      throw new Error(reason)
+      const currentStock =
+        typeof row.stock === 'number' && Number.isFinite(row.stock) ? row.stock : 0
+
+      if (parsedQuantity > currentStock) {
+        return jsonResponse(400, {
+          error: `Estoque insuficiente. Disponível: ${currentStock}, solicitado: ${parsedQuantity}`,
+          currentStock,
+        })
+      }
+
+      try {
+        await mutateStock({
+          productId,
+          rowKey,
+          quantity: parsedQuantity,
+          revision: product._rev,
+        })
+
+        const nextStock = currentStock - parsedQuantity
+        return jsonResponse(200, {newStock: nextStock})
+      } catch (mutationError) {
+        const statusCode = mutationError?.statusCode || 500
+
+        const isConcurrencyError = statusCode === 409 || statusCode === 412
+        if (isConcurrencyError && attempt < MAX_ATTEMPTS - 1) {
+          // Repetir o fluxo com os dados mais recentes
+          continue
+        }
+
+        if (isConcurrencyError) {
+          const latest = await fetchProductRow({productId, rowKey}).catch(() => null)
+          const latestStock =
+            typeof latest?.row?.stock === 'number' && Number.isFinite(latest?.row?.stock)
+              ? latest.row.stock
+              : 0
+          return jsonResponse(409, {
+            error: `Não foi possível registrar o pedido. Estoque atualizado: ${latestStock} unidade(s) disponíveis.`,
+            currentStock: latestStock,
+          })
+        }
+
+        throw mutationError
+      }
     }
 
-    const product = queryJson?.result || null
-    const row = product?.row || null
-
-    if (!product || !row) {
-      return jsonResponse(404, {error: 'Produto ou sabor não encontrado'})
-    }
-
-    const currentStock =
-      typeof row.stock === 'number' && Number.isFinite(row.stock) ? row.stock : 0
-
-    if (parsedQuantity > currentStock) {
-      return jsonResponse(400, {
-        error: `Estoque insuficiente. Disponível: ${currentStock}, solicitado: ${parsedQuantity}`,
-      })
-    }
-
-    const nextStock = currentStock - parsedQuantity
-    const escapedKey = escapeQuotes(rowKey)
-
-    const mutationResult = await fetch(
-      `https://${PROJECT_ID}.api.sanity.io/v${API_VERSION}/data/mutate/${DATASET}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${TOKEN}`,
-        },
-        body: JSON.stringify({
-          mutations: [
-            {
-              patch: {
-                id: productId,
-                set: {
-                  [`rows[_key=="${escapedKey}"].stock`]: nextStock,
-                },
-              },
-            },
-          ],
-        }),
-      },
-    )
-
-    const mutationJson = await mutationResult.json()
-
-    if (!mutationResult.ok) {
-      const reason =
-        mutationJson?.error?.description ||
-        mutationJson?.error?.message ||
-        mutationJson?.message ||
-        'Erro ao atualizar estoque'
-      throw new Error(reason)
-    }
-
-    return jsonResponse(200, {newStock: nextStock})
+    throw new Error('Não foi possível registrar o pedido depois de várias tentativas.')
   } catch (error) {
     console.error('[update-stock]', error)
     return jsonResponse(500, {error: error.message || 'Erro desconhecido'})
